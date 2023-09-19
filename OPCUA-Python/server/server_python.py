@@ -1,73 +1,77 @@
-'''OPC UA Server Simulate'''
-from random import randint
+"""OPC UA Server Simulate"""
+import random
 import datetime
-import time
-from opcua import Server
+import asyncio
+from asyncua import Server, ua
 
-server = Server()
 
-URL = "opc.tcp://192.168.0.82:4840"
-server.set_endpoint(URL)
+async def main():
+    server = Server()
+    await server.init()
 
-NAME = "OPCUA_SIMULATE_SERVER"
-addspace = server.register_namespace(NAME)
-print(f"namespace: {addspace}")
+    url = "opc.tcp://192.168.0.82:4840"
+    server.set_endpoint(url)
+    server.set_server_name("OPCUA Server Simulate")
 
-node = server.get_objects_node()
-print(f"node: {node}")
+    uri = "OPCUA_SIMULATE_SERVER"
+    idx = await server.register_namespace(uri)
+    print(f"namespace: {idx}")
 
-param = node.add_object(addspace, "Parameters")
-print(f"param: {param}")
+    param = await server.nodes.objects.add_object(idx, "Parameters")
+    print(f" param: {param}")
 
-Temp = param.add_variable(addspace, "Temperature", 0)
-print(f"Temp: {Temp}")
-Press = param.add_variable(addspace, "Pressure", 0)
-print(f"Press: {Press}")
-Time = param.add_variable(addspace, "Time", 0)
-print(f"Time: {Time}")
+    temp = await param.add_variable(idx, "Temperature", ua.Int32(0))
+    print(f"  - Temp: {temp}")
+    await temp.set_writable()
 
-boiler = node.add_object(addspace, "Boiler")
-print(f"boiler: {boiler}")
+    press = await param.add_variable(idx, "Pressure", ua.Float(0.0))
+    print(f"  - Press: {press}")
+    await press.set_writable()
 
-TempBoiler = boiler.add_variable(addspace, "TemperatureBoiler", 0)
-print(f"TempBoiler: {TempBoiler}")
+    timestamp = await param.add_variable(idx, "Time", datetime.datetime.utcnow())
+    print(f"  - Time: {timestamp}")
+    await timestamp.set_writable()
 
-Visc = param.add_variable(addspace, "Viscosity", 0)
-print(f"Visc: {Visc}")
+    boiler = await server.nodes.objects.add_object(idx, "Boiler")
+    print(f" boiler: {boiler}")
 
-Temp.set_writable()
-Press.set_writable()
-Time.set_writable()
-TempBoiler.set_writable()
-Visc.set_writable()
+    boiler_temp = await boiler.add_variable(idx, "BoilerTemperature", ua.Int32(0))
+    print(f"  - boiler_temp: {boiler_temp}")
+    await boiler_temp.set_writable()
 
-# addspaceTest = server.register_namespace("Test")
-# print(f"namespaceTest: {addspaceTest}")
+    boiler_status = await boiler.add_variable(idx, "BoilerStatus", ua.Boolean())
+    print(f"  - boiler_status: {boiler_status}")
+    await boiler_status.set_writable()
 
-# boiler = node.add_object(addspaceTest, "Boiler")
-# print(f"boiler: {boiler}")
+    visc = await param.add_variable(idx, "Viscosity", ua.Float(0.0))
+    print(f"  - Visc: {visc}")
+    await visc.set_writable()
 
-# TempBoiler = boiler.add_variable(addspaceTest, "TemperatureBoiler", 0)
-# print(f"TempBoiler: {TempBoiler}")
+    async with server:
+        print(f"Server started at {url}")
 
-server.start()
-print(f"Server started at {URL}")
+        while True:
+            # Creating sumulation values
+            temperature_value = ua.Int32(random.randint(200, 400))
+            pressure_value = ua.Float(round(random.randint(5, 15) + random.random(), 2))
+            timestamp_value = datetime.datetime.now()
+            boiler_temperature_value = ua.Int32(random.randint(200, 450))
+            boiler_status_value = random.choice([True, False])
+            viscosity_value = ua.Float(round(random.randint(10, 30) + random.random(), 2))
+            # Showing values
+            print(
+                f"Server: Temp={temperature_value}, Pressure={pressure_value}, Time={timestamp_value}, Boiler_Temp={boiler_temperature_value}, BoilerStatus={boiler_status_value}, Visc={viscosity_value}"
+            )
+            # Sending values tu the server
+            await temp.set_value(temperature_value)
+            await press.set_value(pressure_value)
+            await timestamp.set_value(timestamp_value)
+            await boiler_temp.set_value(boiler_temperature_value)
+            await boiler_status.set_value(boiler_status_value)
+            await visc.set_value(viscosity_value)
+            # Sleep 2s
+            await asyncio.sleep(2)
 
-while True:
-    # Creating sumulation values
-    Temperature = randint(10, 50)
-    Pressure = randint(200, 999)
-    TIME = datetime.datetime.now()
-    TemperatureBoiler = randint(200, 450)
-    Viscosity = randint(10, 20)
-    # Showing values
-    print(
-        f"Server: Temp={Temperature}, Pressure={Pressure}, Time={TIME}, TempBoiler={TemperatureBoiler}, Visc={Viscosity}")
-    # Sending values tu the server
-    Temp.set_value(Temperature)
-    Press.set_value(Pressure)
-    Time.set_value(TIME)
-    TempBoiler.set_value(TemperatureBoiler)
-    Visc.set_value(Viscosity)
-    # Sleep 2s
-    time.sleep(2)
+
+if __name__ == "__main__":
+    asyncio.run(main())
