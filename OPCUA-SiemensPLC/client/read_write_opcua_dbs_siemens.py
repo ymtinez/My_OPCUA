@@ -177,8 +177,8 @@ def str2bool(value: str) -> bool:
 async def main():
     """Main function for this app"""
     print("This app allow to read values from OPCUA-Server of SIEMENS S7-1500")
-    # url = input("Enter the url of the server (opc.tcp://<IP_OPCUA-SERVERr>:<PORT>): ")
-    url = "opc.tcp://192.168.0.120:4840"
+    url = input("Enter the url of the server (opc.tcp://<IP_OPCUA-SERVERr>:<PORT>): ")
+    # url = "opc.tcp://192.168.0.120:4840"
     # client = Client("opc.tcp://192.168.0.120:4840")
     async with Client(url) as client:
         try:
